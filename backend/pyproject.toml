@@ -21,6 +21,7 @@ dependencies = [
     "celery>=5.4",
     "openai>=1.54",
     "anthropic>=0.39",
+    "opencv-python-headless>=4.10",
 ]
 
 [project.optional-dependencies]

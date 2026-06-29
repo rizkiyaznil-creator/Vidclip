@@ -17,6 +17,7 @@ from app.services.subtitle import PRESETS
 router = APIRouter(tags=["jobs"])
 
 ALLOWED_MODELS = {"haiku", "opus"}
+ALLOWED_REFRAME = {"face", "blur", "crop"}
 
 
 def _enqueue_process(job_id: str) -> None:
@@ -25,10 +26,10 @@ def _enqueue_process(job_id: str) -> None:
     process_job.delay(job_id)
 
 
-def _enqueue_render(job_id: str) -> None:
+def _enqueue_render(job_id: str, method: str | None = None) -> None:
     from app.tasks.rendering import render_job
 
-    render_job.delay(job_id)
+    render_job.delay(job_id, method)
 
 
 @router.post("/jobs", response_model=JobOut, status_code=status.HTTP_201_CREATED)
@@ -99,6 +100,7 @@ def get_job(
 @router.post("/jobs/{job_id}/render", response_model=JobDetail)
 def render(
     job_id: uuid.UUID,
+    reframe: str | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Job:
@@ -107,7 +109,9 @@ def render(
         raise HTTPException(status_code=409, detail="Job belum siap dirender.")
     if not any(c.selected for c in job.clips):
         raise HTTPException(status_code=400, detail="Pilih minimal satu klip dulu.")
-    _enqueue_render(str(job.id))
+    if reframe is not None and reframe not in ALLOWED_REFRAME:
+        raise HTTPException(status_code=400, detail="Metode reframe tidak dikenal.")
+    _enqueue_render(str(job.id), reframe)
     return job
 
 

@@ -34,6 +34,14 @@ PRESETS: dict[str, Preset] = {
         fontname="Arial", fontsize=96, primary="&H00FFFFFF", highlight="&H00FF00CC",
         outline="&H00200020", outline_w=6, uppercase=False, max_words=4,
     ),
+    "minimal": Preset(
+        fontname="Arial", fontsize=84, primary="&H00FFFFFF", highlight="&H00FFFFFF",
+        outline="&H00000000", outline_w=4, uppercase=False, max_words=5,
+    ),
+    "sunny": Preset(
+        fontname="Arial", fontsize=100, primary="&H0000E5FF", highlight="&H00FFFFFF",
+        outline="&H00000000", outline_w=7, uppercase=True, max_words=3,
+    ),
 }
 DEFAULT_PRESET = "classic"
 

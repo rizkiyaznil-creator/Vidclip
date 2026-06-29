@@ -19,11 +19,13 @@ subtitle gaya TikTok (burned-in).
 | M5 — Analisis AI (kandidat klip, Claude) | ✅ |
 | M6 — Frontend (upload, review, render, download) | ✅ |
 | M7 — Render dasar (potong + reframe 9:16 + subtitle) | ✅ |
-| M8 — Face tracking + lebih banyak preset subtitle | ⏳ |
+| M8 — Face tracking + preset subtitle tambahan | ✅ |
 | M9 — Polish (progress real-time, kuota, retensi) | ⏳ |
 
 **🎉 Aplikasi sudah bisa dipakai end-to-end** (upload → klip ber-subtitle 9:16).
-Reframe saat ini memakai blur background / center crop; face tracking menyusul di M8.
+Reframe **mengikuti wajah pembicara** (OpenCV) dengan fallback otomatis ke blur/
+center-crop. Tersedia 5 preset subtitle: `classic`, `bold_caps`, `neon`,
+`minimal`, `sunny`.
 
 ## Arsitektur singkat
 

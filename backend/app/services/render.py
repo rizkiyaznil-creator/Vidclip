@@ -4,9 +4,28 @@ import os
 import subprocess
 import tempfile
 
+from app.services import facetrack
+from app.services.media import probe_dimensions
 from app.services.reframe import reframe_filtergraph
 from app.services.subtitle import build_ass
 from app.services.transcribe.base import TranscriptWord
+
+
+def _build_filtergraph(
+    source_path: str, start: float, end: float, method: str, ass_path: str | None
+) -> tuple[str, str]:
+    """Pilih filtergraph reframe. 'face' memakai face tracking; bila tidak
+    memungkinkan, otomatis fallback ke 'blur'."""
+    if method == "face" and facetrack.is_available():
+        try:
+            iw, ih = probe_dimensions(source_path)
+            track = facetrack.compute_track(source_path, start, end, iw, ih)
+            if track:
+                return facetrack.build_face_filtergraph(track, iw, ih, ass_path)
+        except Exception:
+            pass  # fallback di bawah
+    fallback = "blur" if method == "face" else method
+    return reframe_filtergraph(fallback, ass_path)
 
 
 def render_clip(
@@ -28,7 +47,9 @@ def render_clip(
             with os.fdopen(fd, "w", encoding="utf-8") as f:
                 f.write(build_ass(words, start, end, preset))
 
-        filter_complex, out_label = reframe_filtergraph(method, ass_path)
+        filter_complex, out_label = _build_filtergraph(
+            source_path, start, end, method, ass_path
+        )
 
         cmd = [
             "ffmpeg", "-y",

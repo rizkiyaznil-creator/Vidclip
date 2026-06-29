@@ -91,7 +91,8 @@
     let token = localStorage.getItem("vidclip_token");
     let authMode = "login";
     let pollTimer = null;
-    const PRESETS = ["classic", "bold_caps", "neon"];
+    const PRESETS = ["classic", "bold_caps", "neon", "minimal", "sunny"];
+    const REFRAME = { face: "Ikuti wajah (face tracking)", blur: "Blur background", crop: "Center crop" };
 
     const $ = (id) => document.getElementById(id);
     const STATUS_LABEL = {
@@ -247,7 +248,13 @@
           });
           html += `</div>`;
           if (j.status === "awaiting_review")
-            html += `<button id="renderBtn" class="mt-4 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-medium">🎬 Render klip terpilih</button>`;
+            html += `<div class="mt-4 flex items-center gap-2 flex-wrap">
+              <label class="text-sm text-slate-400">Reframe:</label>
+              <select id="reframeSel" class="text-sm bg-slate-700 rounded px-2 py-1">
+                ${Object.entries(REFRAME).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}
+              </select>
+              <button id="renderBtn" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-medium">🎬 Render klip terpilih</button>
+            </div>`;
         }
         d.innerHTML = html;
 
@@ -265,7 +272,8 @@
         const rb = $("renderBtn");
         if (rb) rb.addEventListener("click", async () => {
           rb.disabled = true; rb.textContent = "Mengirim…";
-          try { await apiJson("/jobs/" + id + "/render", { method: "POST" }); openJob(id); }
+          const method = ($("reframeSel") || {}).value || "face";
+          try { await apiJson("/jobs/" + id + "/render?reframe=" + method, { method: "POST" }); openJob(id); }
           catch (e) { alert(e.message); rb.disabled = false; }
         });
 
