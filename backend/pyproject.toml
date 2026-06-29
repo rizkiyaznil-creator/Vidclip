@@ -18,6 +18,9 @@ dependencies = [
     "bcrypt>=4.2",
     "email-validator>=2.2",
     "python-multipart>=0.0.12",
+    "celery>=5.4",
+    "openai>=1.54",
+    "anthropic>=0.39",
 ]
 
 [project.optional-dependencies]

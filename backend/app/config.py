@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = 10080
     master_encryption_key: str = "change-me-generate-a-real-fernet-key"
 
+    # Pemrosesan video
+    # Metode reframe default ke 9:16: 'blur' | 'crop' (face tracking menyusul di M8)
+    reframe_method: str = "blur"
+    max_upload_mb: int = 1024  # batas ukuran upload (default 1 GB)
+
 
 @lru_cache
 def get_settings() -> Settings:
