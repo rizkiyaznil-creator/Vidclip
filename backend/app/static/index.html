@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🎬 Vidclip</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+  <div class="max-w-3xl mx-auto p-4 sm:p-8">
+    <header class="flex items-center justify-between mb-8">
+      <h1 class="text-2xl font-bold">🎬 Vidclip</h1>
+      <button id="logoutBtn" class="hidden text-sm text-slate-400 hover:text-white">Keluar</button>
+    </header>
+
+    <!-- AUTH -->
+    <section id="authView" class="hidden">
+      <div class="bg-slate-800 rounded-xl p-6 max-w-md mx-auto">
+        <div class="flex gap-2 mb-4">
+          <button data-tab="login" class="authTab flex-1 py-2 rounded-lg bg-indigo-600">Masuk</button>
+          <button data-tab="register" class="authTab flex-1 py-2 rounded-lg bg-slate-700">Daftar</button>
+        </div>
+        <input id="email" type="email" placeholder="Email"
+          class="w-full mb-3 px-3 py-2 rounded-lg bg-slate-700 outline-none" />
+        <input id="password" type="password" placeholder="Password (min 8 karakter)"
+          class="w-full mb-3 px-3 py-2 rounded-lg bg-slate-700 outline-none" />
+        <button id="authSubmit" class="w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-medium">Masuk</button>
+        <p id="authMsg" class="text-sm text-rose-400 mt-3"></p>
+      </div>
+    </section>
+
+    <!-- APP -->
+    <section id="appView" class="hidden space-y-6">
+      <!-- API Keys -->
+      <details class="bg-slate-800 rounded-xl p-5">
+        <summary class="cursor-pointer font-semibold">🔑 API Key (BYOK)</summary>
+        <p class="text-sm text-slate-400 mt-2 mb-3">
+          Masukkan API key milikmu. Disimpan terenkripsi. Transkripsi pakai OpenAI, analisis pakai Anthropic (Claude).
+        </p>
+        <div id="keysStatus" class="text-sm mb-3 space-y-1"></div>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs text-slate-400">OpenAI API Key</label>
+            <input id="openaiKey" type="password" placeholder="sk-..."
+              class="w-full px-3 py-2 rounded-lg bg-slate-700 outline-none" />
+          </div>
+          <div>
+            <label class="text-xs text-slate-400">Anthropic API Key</label>
+            <input id="anthropicKey" type="password" placeholder="sk-ant-..."
+              class="w-full px-3 py-2 rounded-lg bg-slate-700 outline-none" />
+          </div>
+        </div>
+        <button id="saveKeys" class="mt-3 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm font-medium">Simpan Key</button>
+      </details>
+
+      <!-- Upload -->
+      <div class="bg-slate-800 rounded-xl p-5">
+        <h2 class="font-semibold mb-3">⬆️ Upload Video</h2>
+        <input id="videoFile" type="file" accept="video/*"
+          class="w-full mb-3 text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-600 file:text-white" />
+        <div class="grid sm:grid-cols-3 gap-3 mb-3">
+          <input id="language" placeholder="Bahasa (opsional, mis. id/en)"
+            class="px-3 py-2 rounded-lg bg-slate-700 outline-none text-sm" />
+          <select id="model" class="px-3 py-2 rounded-lg bg-slate-700 outline-none text-sm">
+            <option value="haiku">Model: Haiku (hemat)</option>
+            <option value="opus">Model: Opus (kualitas)</option>
+          </select>
+          <input id="instruction" placeholder="Arahan (mis. cari momen lucu)"
+            class="px-3 py-2 rounded-lg bg-slate-700 outline-none text-sm" />
+        </div>
+        <button id="uploadBtn" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-medium">Proses Video</button>
+        <p id="uploadMsg" class="text-sm text-slate-400 mt-2"></p>
+      </div>
+
+      <!-- Jobs -->
+      <div class="bg-slate-800 rounded-xl p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-semibold">📋 Video Saya</h2>
+          <button id="refreshJobs" class="text-sm text-slate-400 hover:text-white">↻ Segarkan</button>
+        </div>
+        <div id="jobsList" class="space-y-2"></div>
+      </div>
+
+      <!-- Job detail -->
+      <div id="jobDetail" class="hidden bg-slate-800 rounded-xl p-5"></div>
+    </section>
+  </div>
+
+  <script>
+    const API = "";
+    let token = localStorage.getItem("vidclip_token");
+    let authMode = "login";
+    let pollTimer = null;
+    const PRESETS = ["classic", "bold_caps", "neon"];
+
+    const $ = (id) => document.getElementById(id);
+    const STATUS_LABEL = {
+      uploaded: "Mengantri…", transcribing: "Transkripsi…", analyzing: "Analisis AI…",
+      awaiting_review: "Siap direview", rendering: "Merender…", done: "Selesai", failed: "Gagal",
+    };
+    const ACTIVE = ["uploaded", "transcribing", "analyzing", "rendering"];
+
+    async function api(path, opts = {}) {
+      opts.headers = opts.headers || {};
+      if (token) opts.headers["Authorization"] = "Bearer " + token;
+      const res = await fetch(API + path, opts);
+      if (res.status === 401) { logout(); throw new Error("Sesi habis"); }
+      return res;
+    }
+    async function apiJson(path, opts = {}) {
+      opts.headers = { ...(opts.headers || {}), "Content-Type": "application/json" };
+      const res = await api(path, opts);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || "Gagal");
+      return data;
+    }
+
+    // ── Auth ──
+    document.querySelectorAll(".authTab").forEach((b) =>
+      b.addEventListener("click", () => {
+        authMode = b.dataset.tab;
+        document.querySelectorAll(".authTab").forEach((x) =>
+          x.classList.toggle("bg-indigo-600", x.dataset.tab === authMode) ||
+          x.classList.toggle("bg-slate-700", x.dataset.tab !== authMode));
+        $("authSubmit").textContent = authMode === "login" ? "Masuk" : "Daftar";
+      }));
+
+    $("authSubmit").addEventListener("click", async () => {
+      $("authMsg").textContent = "";
+      const email = $("email").value, password = $("password").value;
+      try {
+        if (authMode === "register") {
+          await apiJson("/auth/register", { method: "POST", body: JSON.stringify({ email, password }) });
+        }
+        const data = await apiJson("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
+        token = data.access_token;
+        localStorage.setItem("vidclip_token", token);
+        showApp();
+      } catch (e) { $("authMsg").textContent = e.message; }
+    });
+
+    function logout() {
+      token = null; localStorage.removeItem("vidclip_token");
+      if (pollTimer) clearInterval(pollTimer);
+      $("appView").classList.add("hidden");
+      $("logoutBtn").classList.add("hidden");
+      $("authView").classList.remove("hidden");
+    }
+    $("logoutBtn").addEventListener("click", logout);
+
+    // ── Keys ──
+    async function loadKeys() {
+      try {
+        const keys = await apiJson("/keys");
+        const byProv = Object.fromEntries(keys.map((k) => [k.provider, k.hint]));
+        $("keysStatus").innerHTML =
+          `<div>OpenAI: ${byProv.openai ? "✅ " + byProv.openai : "❌ belum diset"}</div>` +
+          `<div>Anthropic: ${byProv.anthropic ? "✅ " + byProv.anthropic : "❌ belum diset"}</div>`;
+      } catch (e) {}
+    }
+    $("saveKeys").addEventListener("click", async () => {
+      const ok = $("openaiKey").value.trim(), an = $("anthropicKey").value.trim();
+      try {
+        if (ok) await apiJson("/keys", { method: "PUT", body: JSON.stringify({ provider: "openai", api_key: ok }) });
+        if (an) await apiJson("/keys", { method: "PUT", body: JSON.stringify({ provider: "anthropic", api_key: an }) });
+        $("openaiKey").value = ""; $("anthropicKey").value = "";
+        loadKeys();
+      } catch (e) { alert(e.message); }
+    });
+
+    // ── Upload ──
+    $("uploadBtn").addEventListener("click", async () => {
+      const f = $("videoFile").files[0];
+      if (!f) { $("uploadMsg").textContent = "Pilih file video dulu."; return; }
+      const fd = new FormData();
+      fd.append("file", f);
+      if ($("language").value) fd.append("language", $("language").value);
+      if ($("instruction").value) fd.append("instruction", $("instruction").value);
+      fd.append("model", $("model").value);
+      $("uploadMsg").textContent = "Mengunggah…";
+      try {
+        const res = await api("/jobs", { method: "POST", body: fd });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Gagal upload");
+        $("uploadMsg").textContent = "Diunggah! Memproses…";
+        $("videoFile").value = "";
+        loadJobs();
+        openJob(data.id);
+      } catch (e) { $("uploadMsg").textContent = e.message; }
+    });
+
+    // ── Jobs ──
+    async function loadJobs() {
+      try {
+        const jobs = await apiJson("/jobs");
+        $("jobsList").innerHTML = jobs.length ? "" : "<p class='text-sm text-slate-400'>Belum ada video.</p>";
+        jobs.forEach((j) => {
+          const el = document.createElement("button");
+          el.className = "w-full text-left px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 flex justify-between";
+          el.innerHTML = `<span class="truncate">${j.filename || "video"}</span>
+            <span class="text-xs px-2 py-0.5 rounded ${j.status === 'failed' ? 'bg-rose-600' : j.status === 'done' ? 'bg-emerald-600' : 'bg-slate-500'}">${STATUS_LABEL[j.status] || j.status}</span>`;
+          el.addEventListener("click", () => openJob(j.id));
+          $("jobsList").appendChild(el);
+        });
+      } catch (e) {}
+    }
+    $("refreshJobs").addEventListener("click", loadJobs);
+
+    // ── Job detail + review ──
+    async function openJob(id) {
+      if (pollTimer) clearInterval(pollTimer);
+      const render = async () => {
+        const j = await apiJson("/jobs/" + id);
+        const d = $("jobDetail");
+        d.classList.remove("hidden");
+        let html = `<div class="flex justify-between items-center mb-3">
+          <h2 class="font-semibold truncate">${j.filename || "video"}</h2>
+          <span class="text-xs px-2 py-1 rounded ${j.status === 'failed' ? 'bg-rose-600' : j.status === 'done' ? 'bg-emerald-600' : 'bg-indigo-600'}">${STATUS_LABEL[j.status] || j.status}</span>
+        </div>`;
+        if (j.status === "failed") html += `<p class="text-rose-400 text-sm">${j.error || "Terjadi kesalahan"}</p>`;
+        if (ACTIVE.includes(j.status)) html += `<p class="text-slate-400 text-sm">⏳ Sedang diproses, halaman akan diperbarui otomatis…</p>`;
+
+        if (j.clips && j.clips.length) {
+          html += `<div class="space-y-3 mt-3">`;
+          j.clips.sort((a, b) => b.score - a.score).forEach((c) => {
+            const done = c.status === "done";
+            html += `<div class="border border-slate-700 rounded-lg p-3">
+              <div class="flex items-start gap-3">
+                <input type="checkbox" data-clip="${c.id}" class="selClip mt-1" ${c.selected ? "checked" : ""} ${j.status !== 'awaiting_review' ? 'disabled' : ''}/>
+                <div class="flex-1">
+                  <div class="flex justify-between gap-2">
+                    <span class="font-medium">${c.title}</span>
+                    <span class="text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded">⭐ ${c.score}</span>
+                  </div>
+                  <div class="text-xs text-slate-400">${c.start_sec.toFixed(1)}s – ${c.end_sec.toFixed(1)}s · ${(c.end_sec - c.start_sec).toFixed(0)} dtk</div>
+                  ${c.reason ? `<div class="text-sm text-slate-300 mt-1">${c.reason}</div>` : ""}
+                  ${(c.hashtags || []).length ? `<div class="text-xs text-indigo-300 mt-1">${c.hashtags.join(" ")}</div>` : ""}
+                  <div class="flex items-center gap-2 mt-2">
+                    <select data-preset="${c.id}" class="presetSel text-xs bg-slate-700 rounded px-2 py-1" ${j.status !== 'awaiting_review' ? 'disabled' : ''}>
+                      ${PRESETS.map((p) => `<option ${c.subtitle_preset === p ? "selected" : ""}>${p}</option>`).join("")}
+                    </select>
+                    <span class="text-xs px-2 py-0.5 rounded ${done ? 'bg-emerald-600' : c.status === 'failed' ? 'bg-rose-600' : 'bg-slate-600'}">${c.status}</span>
+                    ${done ? `<button data-dl="${c.id}" class="dlBtn text-xs text-emerald-400 hover:underline">⬇ Download</button>` : ""}
+                  </div>
+                </div>
+              </div></div>`;
+          });
+          html += `</div>`;
+          if (j.status === "awaiting_review")
+            html += `<button id="renderBtn" class="mt-4 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-medium">🎬 Render klip terpilih</button>`;
+        }
+        d.innerHTML = html;
+
+        d.querySelectorAll(".selClip").forEach((cb) =>
+          cb.addEventListener("change", () =>
+            apiJson("/clips/" + cb.dataset.clip, { method: "PATCH", body: JSON.stringify({ selected: cb.checked }) })));
+        d.querySelectorAll(".presetSel").forEach((sel) =>
+          sel.addEventListener("change", () =>
+            apiJson("/clips/" + sel.dataset.preset, { method: "PATCH", body: JSON.stringify({ subtitle_preset: sel.value }) })));
+        d.querySelectorAll(".dlBtn").forEach((b) =>
+          b.addEventListener("click", async () => {
+            const { url } = await apiJson("/clips/" + b.dataset.dl + "/download");
+            window.open(url, "_blank");
+          }));
+        const rb = $("renderBtn");
+        if (rb) rb.addEventListener("click", async () => {
+          rb.disabled = true; rb.textContent = "Mengirim…";
+          try { await apiJson("/jobs/" + id + "/render", { method: "POST" }); openJob(id); }
+          catch (e) { alert(e.message); rb.disabled = false; }
+        });
+
+        if (ACTIVE.includes(j.status)) { loadJobs(); }
+        else if (pollTimer) { clearInterval(pollTimer); pollTimer = null; loadJobs(); }
+      };
+      await render();
+      pollTimer = setInterval(render, 3000);
+    }
+
+    function showApp() {
+      $("authView").classList.add("hidden");
+      $("appView").classList.remove("hidden");
+      $("logoutBtn").classList.remove("hidden");
+      loadKeys(); loadJobs();
+    }
+
+    // init
+    if (token) showApp(); else $("authView").classList.remove("hidden");
+  </script>
+</body>
+</html>

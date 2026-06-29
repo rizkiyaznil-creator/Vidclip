@@ -14,13 +14,16 @@ subtitle gaya TikTok (burned-in).
 |-----------|--------|
 | M1 — Fondasi (repo, docker-compose, FastAPI, healthcheck) | ✅ |
 | M2 — Auth (JWT) & API key terenkripsi (BYOK) | ✅ |
-| M3 — Upload & object storage | ⏳ |
-| M4 — Transkripsi (BYOK) | ⏳ |
-| M5 — Analisis AI (kandidat klip) | ⏳ |
-| M6 — Review UI | ⏳ |
-| M7 — Render dasar | ⏳ |
-| M8 — Face tracking + preset subtitle | ⏳ |
-| M9 — Polish | ⏳ |
+| M3 — Upload & object storage | ✅ |
+| M4 — Transkripsi (BYOK OpenAI Whisper) | ✅ |
+| M5 — Analisis AI (kandidat klip, Claude) | ✅ |
+| M6 — Frontend (upload, review, render, download) | ✅ |
+| M7 — Render dasar (potong + reframe 9:16 + subtitle) | ✅ |
+| M8 — Face tracking + lebih banyak preset subtitle | ⏳ |
+| M9 — Polish (progress real-time, kuota, retensi) | ⏳ |
+
+**🎉 Aplikasi sudah bisa dipakai end-to-end** (upload → klip ber-subtitle 9:16).
+Reframe saat ini memakai blur background / center crop; face tracking menyusul di M8.
 
 ## Arsitektur singkat
 
@@ -52,10 +55,26 @@ Setelah jalan:
 
 | Layanan | URL |
 |---------|-----|
+| **Aplikasi (UI)** | **http://localhost:8000/app/** |
 | API | http://localhost:8000 |
 | Dokumentasi API (Swagger) | http://localhost:8000/docs |
 | Healthcheck | http://localhost:8000/health/ready |
 | MinIO Console | http://localhost:9001 (user/pass: `minioadmin`) |
+
+### Cara uji end-to-end
+
+1. Buka **http://localhost:8000/app/** → **Daftar** akun.
+2. Buka panel **🔑 API Key (BYOK)** → masukkan API key **OpenAI** (untuk
+   transkripsi) dan **Anthropic/Claude** (untuk analisis) milikmu → Simpan.
+3. **Upload Video** (boleh isi bahasa, model, & arahan seperti "cari momen lucu")
+   → klik **Proses Video**.
+4. Tunggu status berubah jadi **Siap direview** → muncul daftar kandidat klip
+   dengan skor.
+5. Centang klip yang diinginkan, pilih preset subtitle → **Render klip terpilih**.
+6. Setelah **Selesai**, klik **Download** untuk ambil klip 9:16 ber-subtitle.
+
+> UI memakai Tailwind via CDN (butuh internet untuk styling; fungsionalitas tetap
+> jalan tanpa styling). Migrasi ke React ada di roadmap.
 
 Cek semua dependency siap:
 

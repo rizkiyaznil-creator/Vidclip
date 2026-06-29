@@ -1,7 +1,11 @@
 """Entry point aplikasi FastAPI Vidclip."""
 
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from app import __version__
 from app.api import auth, health, jobs, keys
@@ -31,5 +35,10 @@ app.include_router(jobs.router)
 
 
 @app.get("/")
-def root() -> dict:
-    return {"app": "Vidclip", "version": __version__, "docs": "/docs"}
+def root() -> RedirectResponse:
+    return RedirectResponse(url="/app/")
+
+
+# Frontend statis (single-page). Disajikan di /app.
+_static_dir = os.path.join(os.path.dirname(__file__), "static")
+app.mount("/app", StaticFiles(directory=_static_dir, html=True), name="frontend")
