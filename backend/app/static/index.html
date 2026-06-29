@@ -196,12 +196,27 @@
         const jobs = await apiJson("/jobs");
         $("jobsList").innerHTML = jobs.length ? "" : "<p class='text-sm text-slate-400'>Belum ada video.</p>";
         jobs.forEach((j) => {
+          const row = document.createElement("div");
+          row.className = "flex items-center gap-2";
           const el = document.createElement("button");
-          el.className = "w-full text-left px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 flex justify-between";
+          el.className = "flex-1 text-left px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 flex justify-between";
           el.innerHTML = `<span class="truncate">${j.filename || "video"}</span>
             <span class="text-xs px-2 py-0.5 rounded ${j.status === 'failed' ? 'bg-rose-600' : j.status === 'done' ? 'bg-emerald-600' : 'bg-slate-500'}">${STATUS_LABEL[j.status] || j.status}</span>`;
           el.addEventListener("click", () => openJob(j.id));
-          $("jobsList").appendChild(el);
+          const del = document.createElement("button");
+          del.className = "text-slate-500 hover:text-rose-400 px-2";
+          del.title = "Hapus";
+          del.textContent = "🗑";
+          del.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            if (!confirm("Hapus video ini beserta klipnya?")) return;
+            await api("/jobs/" + j.id, { method: "DELETE" });
+            if (pollTimer) clearInterval(pollTimer);
+            $("jobDetail").classList.add("hidden");
+            loadJobs();
+          });
+          row.appendChild(el); row.appendChild(del);
+          $("jobsList").appendChild(row);
         });
       } catch (e) {}
     }

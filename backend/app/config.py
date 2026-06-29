@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     # 'face' otomatis fallback ke 'blur' bila wajah tak terdeteksi/mediapipe absen.
     reframe_method: str = "face"
     max_upload_mb: int = 1024  # batas ukuran upload (default 1 GB)
+    max_active_jobs: int = 3  # kuota job aktif (belum selesai/gagal) per user
+    retention_days: int = 7  # auto-hapus job & file lebih tua dari ini
 
 
 @lru_cache

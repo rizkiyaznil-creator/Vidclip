@@ -20,7 +20,9 @@ subtitle gaya TikTok (burned-in).
 | M6 — Frontend (upload, review, render, download) | ✅ |
 | M7 — Render dasar (potong + reframe 9:16 + subtitle) | ✅ |
 | M8 — Face tracking + preset subtitle tambahan | ✅ |
-| M9 — Polish (progress real-time, kuota, retensi) | ⏳ |
+| M9 — Polish (kuota, batas upload, hapus job, auto-retensi) | ✅ |
+
+**✅ Semua milestone inti (M1–M9) selesai.**
 
 **🎉 Aplikasi sudah bisa dipakai end-to-end** (upload → klip ber-subtitle 9:16).
 Reframe **mengikuti wajah pembicara** (OpenCV) dengan fallback otomatis ke blur/

@@ -10,7 +10,7 @@ celery_app = Celery(
     "vidclip",
     broker=settings.redis_url,
     backend=settings.redis_url,
-    include=["app.tasks.processing", "app.tasks.rendering"],
+    include=["app.tasks.processing", "app.tasks.rendering", "app.tasks.maintenance"],
 )
 
 celery_app.conf.update(
@@ -18,5 +18,11 @@ celery_app.conf.update(
     task_serializer="json",
     result_serializer="json",
     accept_content=["json"],
-    worker_max_tasks_per_child=20,  # cegah kebocoran memori dari ffmpeg/mediapipe
+    worker_max_tasks_per_child=20,  # cegah kebocoran memori dari ffmpeg/opencv
+    beat_schedule={
+        "cleanup-old-jobs": {
+            "task": "vidclip.cleanup_old_jobs",
+            "schedule": 3600.0,  # tiap jam, hapus job > retention_days
+        }
+    },
 )

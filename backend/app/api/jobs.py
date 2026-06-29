@@ -4,10 +4,11 @@ import os
 import uuid
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
+from app.config import get_settings
 from app.core import storage
 from app.db import get_db
 from app.models import Clip, ClipStatus, Job, JobStatus, User
@@ -15,9 +16,17 @@ from app.schemas.jobs import ClipUpdate, JobDetail, JobOut
 from app.services.subtitle import PRESETS
 
 router = APIRouter(tags=["jobs"])
+settings = get_settings()
 
 ALLOWED_MODELS = {"haiku", "opus"}
 ALLOWED_REFRAME = {"face", "blur", "crop"}
+ACTIVE_STATES = (
+    JobStatus.uploaded,
+    JobStatus.transcribing,
+    JobStatus.analyzing,
+    JobStatus.awaiting_review,
+    JobStatus.rendering,
+)
 
 
 def _enqueue_process(job_id: str) -> None:
@@ -45,6 +54,29 @@ def create_job(
         raise HTTPException(status_code=400, detail="File harus berupa video.")
     if model not in ALLOWED_MODELS:
         raise HTTPException(status_code=400, detail="Model harus 'haiku' atau 'opus'.")
+
+    # Batas ukuran upload.
+    file.file.seek(0, 2)
+    size_mb = file.file.tell() / (1024 * 1024)
+    file.file.seek(0)
+    if size_mb > settings.max_upload_mb:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Video terlalu besar ({size_mb:.0f} MB). Maks {settings.max_upload_mb} MB.",
+        )
+
+    # Kuota job aktif per user.
+    active = db.scalar(
+        select(func.count())
+        .select_from(Job)
+        .where(Job.user_id == current_user.id, Job.status.in_(ACTIVE_STATES))
+    )
+    if active >= settings.max_active_jobs:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Kuota tercapai: maks {settings.max_active_jobs} job aktif. "
+            "Selesaikan/hapus job lama dulu.",
+        )
 
     job_id = uuid.uuid4()
     ext = os.path.splitext(file.filename or "")[1].lower() or ".mp4"
@@ -95,6 +127,23 @@ def get_job(
     db: Session = Depends(get_db),
 ) -> Job:
     return _get_owned_job(db, current_user, job_id)
+
+
+@router.delete("/jobs/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_job(
+    job_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    job = _get_owned_job(db, current_user, job_id)
+    # Hapus semua file terkait di storage (video sumber + klip hasil).
+    for prefix in (f"raw/{job.id}/", f"clips/{job.id}/"):
+        try:
+            storage.delete_prefix(prefix)
+        except Exception:  # noqa: BLE001 - tetap hapus record meski storage gagal
+            pass
+    db.delete(job)
+    db.commit()
 
 
 @router.post("/jobs/{job_id}/render", response_model=JobDetail)
