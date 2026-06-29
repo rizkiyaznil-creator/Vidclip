@@ -13,7 +13,7 @@ subtitle gaya TikTok (burned-in).
 | Milestone | Status |
 |-----------|--------|
 | M1 — Fondasi (repo, docker-compose, FastAPI, healthcheck) | ✅ |
-| M2 — Auth & API key terenkripsi | ⏳ |
+| M2 — Auth (JWT) & API key terenkripsi (BYOK) | ✅ |
 | M3 — Upload & object storage | ⏳ |
 | M4 — Transkripsi (BYOK) | ⏳ |
 | M5 — Analisis AI (kandidat klip) | ⏳ |
