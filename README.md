@@ -68,10 +68,11 @@ Setelah jalan:
 ### Cara uji end-to-end
 
 1. Buka **http://localhost:8000/app/** → **Daftar** akun.
-2. Buka panel **🔑 API Key (BYOK)** → masukkan API key **OpenAI** (untuk
-   transkripsi) dan **Anthropic/Claude** (untuk analisis) milikmu → Simpan.
-3. **Upload Video** (boleh isi bahasa, model, & arahan seperti "cari momen lucu")
-   → klik **Proses Video**.
+2. Buka panel **🔑 API Key (BYOK)** → masukkan API key untuk transkripsi
+   (**OpenAI** atau **Groq** — Groq lebih hemat) dan **Anthropic/Claude**
+   (untuk analisis) milikmu → Simpan.
+3. **Upload Video** (boleh atur bahasa, engine transkripsi OpenAI/Groq, model
+   analisis, & arahan seperti "cari momen lucu") → klik **Proses Video**.
 4. Tunggu status berubah jadi **Siap direview** → muncul daftar kandidat klip
    dengan skor.
 5. Centang klip yang diinginkan, pilih preset subtitle → **Render klip terpilih**.

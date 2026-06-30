@@ -37,6 +37,10 @@ class Job(Base):
     source_key: Mapped[str | None] = mapped_column(String(512))
     language: Mapped[str | None] = mapped_column(String(16))
     instruction: Mapped[str | None] = mapped_column(String(1000))
+    # Engine transkripsi: 'openai' (default) atau 'groq'.
+    transcribe_engine: Mapped[str] = mapped_column(
+        String(32), default="openai", nullable=False
+    )
     # Pilihan model AI user: 'haiku' (hemat, default) atau 'opus' (kualitas).
     model: Mapped[str] = mapped_column(String(32), default="haiku", nullable=False)
     # Transkrip lengkap (kata + timestamp) disimpan sebagai JSONB.

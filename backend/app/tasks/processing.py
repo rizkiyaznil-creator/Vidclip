@@ -14,6 +14,12 @@ from app.services.media import extract_audio
 from app.services.transcribe import get_transcriber
 from app.services.transcribe.base import Transcript
 
+# Engine transkripsi → provider key yang dipakai.
+ENGINE_PROVIDER = {
+    "openai": Provider.openai,
+    "groq": Provider.groq,
+}
+
 
 def run_processing(job_id: str) -> None:
     """Logika inti (dipisah dari Celery agar mudah diuji/dipanggil langsung)."""
@@ -33,10 +39,12 @@ def run_processing(job_id: str) -> None:
         audio_path = os.path.join(tmpdir, "audio.wav")
         extract_audio(video_path, audio_path)
 
-        # 2. Transkripsi (BYOK OpenAI)
-        openai_key = get_decrypted_key(db, job.user_id, Provider.openai)
-        transcribe = get_transcriber("openai")
-        transcript = transcribe(audio_path, openai_key, language=job.language or None)
+        # 2. Transkripsi (BYOK: OpenAI atau Groq sesuai pilihan job)
+        engine = job.transcribe_engine or "openai"
+        provider = ENGINE_PROVIDER.get(engine, Provider.openai)
+        transcribe_key = get_decrypted_key(db, job.user_id, provider)
+        transcribe = get_transcriber(engine)
+        transcript = transcribe(audio_path, transcribe_key, language=job.language or None)
         job.transcript = transcript.to_dict()
         job.language = job.language or transcript.language
         db.commit()

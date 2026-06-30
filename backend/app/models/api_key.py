@@ -22,6 +22,7 @@ from app.db import Base
 class Provider(str, enum.Enum):
     openai = "openai"
     anthropic = "anthropic"
+    groq = "groq"
 
 
 class ApiKey(Base):

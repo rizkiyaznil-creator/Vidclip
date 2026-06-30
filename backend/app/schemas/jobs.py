@@ -35,6 +35,7 @@ class JobOut(BaseModel):
     language: str | None
     instruction: str | None
     model: str
+    transcribe_engine: str
     error: str | None
     created_at: datetime
 

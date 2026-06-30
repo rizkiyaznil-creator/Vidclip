@@ -35,13 +35,18 @@
       <details class="bg-slate-800 rounded-xl p-5">
         <summary class="cursor-pointer font-semibold">🔑 API Key (BYOK)</summary>
         <p class="text-sm text-slate-400 mt-2 mb-3">
-          Masukkan API key milikmu. Disimpan terenkripsi. Transkripsi pakai OpenAI, analisis pakai Anthropic (Claude).
+          Masukkan API key milikmu (disimpan terenkripsi). Transkripsi pakai <b>OpenAI</b> atau <b>Groq</b> (hemat), analisis pakai <b>Anthropic</b> (Claude).
         </p>
         <div id="keysStatus" class="text-sm mb-3 space-y-1"></div>
-        <div class="grid sm:grid-cols-2 gap-3">
+        <div class="grid sm:grid-cols-3 gap-3">
           <div>
             <label class="text-xs text-slate-400">OpenAI API Key</label>
             <input id="openaiKey" type="password" placeholder="sk-..."
+              class="w-full px-3 py-2 rounded-lg bg-slate-700 outline-none" />
+          </div>
+          <div>
+            <label class="text-xs text-slate-400">Groq API Key</label>
+            <input id="groqKey" type="password" placeholder="gsk_..."
               class="w-full px-3 py-2 rounded-lg bg-slate-700 outline-none" />
           </div>
           <div>
@@ -61,12 +66,16 @@
         <div class="grid sm:grid-cols-3 gap-3 mb-3">
           <input id="language" placeholder="Bahasa (opsional, mis. id/en)"
             class="px-3 py-2 rounded-lg bg-slate-700 outline-none text-sm" />
+          <select id="engine" class="px-3 py-2 rounded-lg bg-slate-700 outline-none text-sm">
+            <option value="openai">Transkrip: OpenAI</option>
+            <option value="groq">Transkrip: Groq (hemat)</option>
+          </select>
           <select id="model" class="px-3 py-2 rounded-lg bg-slate-700 outline-none text-sm">
-            <option value="haiku">Model: Haiku (hemat)</option>
-            <option value="opus">Model: Opus (kualitas)</option>
+            <option value="haiku">Analisis: Haiku (hemat)</option>
+            <option value="opus">Analisis: Opus (kualitas)</option>
           </select>
           <input id="instruction" placeholder="Arahan (mis. cari momen lucu)"
-            class="px-3 py-2 rounded-lg bg-slate-700 outline-none text-sm" />
+            class="px-3 py-2 rounded-lg bg-slate-700 outline-none text-sm sm:col-span-3" />
         </div>
         <button id="uploadBtn" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-medium">Proses Video</button>
         <p id="uploadMsg" class="text-sm text-slate-400 mt-2"></p>
@@ -154,17 +163,20 @@
       try {
         const keys = await apiJson("/keys");
         const byProv = Object.fromEntries(keys.map((k) => [k.provider, k.hint]));
+        const st = (p) => (byProv[p] ? "✅ " + byProv[p] : "❌ belum diset");
         $("keysStatus").innerHTML =
-          `<div>OpenAI: ${byProv.openai ? "✅ " + byProv.openai : "❌ belum diset"}</div>` +
-          `<div>Anthropic: ${byProv.anthropic ? "✅ " + byProv.anthropic : "❌ belum diset"}</div>`;
+          `<div>OpenAI: ${st("openai")}</div>` +
+          `<div>Groq: ${st("groq")}</div>` +
+          `<div>Anthropic: ${st("anthropic")}</div>`;
       } catch (e) {}
     }
     $("saveKeys").addEventListener("click", async () => {
-      const ok = $("openaiKey").value.trim(), an = $("anthropicKey").value.trim();
+      const ok = $("openaiKey").value.trim(), gq = $("groqKey").value.trim(), an = $("anthropicKey").value.trim();
       try {
         if (ok) await apiJson("/keys", { method: "PUT", body: JSON.stringify({ provider: "openai", api_key: ok }) });
+        if (gq) await apiJson("/keys", { method: "PUT", body: JSON.stringify({ provider: "groq", api_key: gq }) });
         if (an) await apiJson("/keys", { method: "PUT", body: JSON.stringify({ provider: "anthropic", api_key: an }) });
-        $("openaiKey").value = ""; $("anthropicKey").value = "";
+        $("openaiKey").value = ""; $("groqKey").value = ""; $("anthropicKey").value = "";
         loadKeys();
       } catch (e) { alert(e.message); }
     });
@@ -178,6 +190,7 @@
       if ($("language").value) fd.append("language", $("language").value);
       if ($("instruction").value) fd.append("instruction", $("instruction").value);
       fd.append("model", $("model").value);
+      fd.append("transcribe_engine", $("engine").value);
       $("uploadMsg").textContent = "Mengunggah…";
       try {
         const res = await api("/jobs", { method: "POST", body: fd });

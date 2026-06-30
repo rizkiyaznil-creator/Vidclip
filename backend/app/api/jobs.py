@@ -20,6 +20,7 @@ settings = get_settings()
 
 ALLOWED_MODELS = {"haiku", "opus"}
 ALLOWED_REFRAME = {"face", "blur", "crop"}
+ALLOWED_ENGINES = {"openai", "groq"}
 ACTIVE_STATES = (
     JobStatus.uploaded,
     JobStatus.transcribing,
@@ -47,6 +48,7 @@ def create_job(
     language: str | None = Form(None),
     instruction: str | None = Form(None),
     model: str = Form("haiku"),
+    transcribe_engine: str = Form("openai"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Job:
@@ -54,6 +56,8 @@ def create_job(
         raise HTTPException(status_code=400, detail="File harus berupa video.")
     if model not in ALLOWED_MODELS:
         raise HTTPException(status_code=400, detail="Model harus 'haiku' atau 'opus'.")
+    if transcribe_engine not in ALLOWED_ENGINES:
+        raise HTTPException(status_code=400, detail="Engine transkripsi harus 'openai' atau 'groq'.")
 
     # Batas ukuran upload.
     file.file.seek(0, 2)
@@ -92,6 +96,7 @@ def create_job(
         language=language or None,
         instruction=instruction or None,
         model=model,
+        transcribe_engine=transcribe_engine,
     )
     db.add(job)
     db.commit()
